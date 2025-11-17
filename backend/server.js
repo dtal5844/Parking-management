@@ -321,6 +321,47 @@ app.delete('/api/admin/spots/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ----- גיבוי ושחזור (Admin) ----- //
+
+// הורדת גיבוי של כל הנתונים
+app.get('/api/admin/backup', async (req, res) => {
+  const data = await loadData();
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="parking-backup.json"');
+  res.send(JSON.stringify(data, null, 2));
+});
+
+// שחזור מגיבוי
+app.post('/api/admin/restore', async (req, res) => {
+  const incoming = req.body;
+
+  // בדיקה בסיסית שהמבנה הגיוני
+  if (
+    !incoming ||
+    typeof incoming !== 'object' ||
+    !Array.isArray(incoming.users) ||
+    !Array.isArray(incoming.reservations) ||
+    !Array.isArray(incoming.parkingSpots)
+  ) {
+    return res.status(400).json({ message: 'קובץ גיבוי לא תקין' });
+  }
+
+  const normalized = {
+    users: incoming.users,
+    reservations: incoming.reservations,
+    parkingSpots: incoming.parkingSpots,
+    maxDays: Number.isInteger(incoming.maxDays) ? incoming.maxDays : DEFAULT_DATA.maxDays
+  };
+
+  try {
+    await saveData(normalized);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('restore error:', err);
+    res.status(500).json({ message: 'שגיאה בשחזור הגיבוי' });
+  }
+});
+
 
 // ----- סטטוס -----
 app.get('/api/health', (req, res) => {

@@ -19,6 +19,9 @@ const Settings = ({
     const [newSpotNumber, setNewSpotNumber] = React.useState('');
     const [reportMonth, setReportMonth] = React.useState(new Date().getMonth());
     const [reportYear, setReportYear] = React.useState(new Date().getFullYear());
+    const [restoreFileName, setRestoreFileName] = React.useState('');
+    const [restoreInProgress, setRestoreInProgress] = React.useState(false);
+    const fileInputRef = React.useRef(null);
     const API_BASE = ''; // אותו origin
 
     const handleMaxDaysChangeInternal = async (e) => {
@@ -282,6 +285,61 @@ const Settings = ({
         'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
         'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
     ];
+
+        // ----- גיבוי ושחזור ----- //
+    const handleDownloadBackup = () => {
+        // הכי פשוט – לפתוח את ה-URL, הדפדפן ידאג להורדה
+        window.open('/api/admin/backup', '_blank');
+    };
+
+    const handleRestoreFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) {
+            setRestoreFileName('');
+            return;
+        }
+        setRestoreFileName(file.name);
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const text = evt.target.result;
+                const json = JSON.parse(text);
+
+                if (!confirm('האם אתה בטוח שברצונך לשחזר את הגיבוי? פעולה זו תדרוס את כל הנתונים הקיימים.')) {
+                    return;
+                }
+
+                setRestoreInProgress(true);
+                const res = await fetch('/api/admin/restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(json)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    alert(data.message || 'שגיאה בשחזור הגיבוי');
+                    return;
+                }
+
+                alert('השחזור הצליח! טוען מחדש את הנתונים...');
+                // כדי לוודא שהמצב מסתנכרן – נטען מחדש את המשתמשים והחניות
+                await reloadUsers();
+                await reloadSpots();
+            } catch (err) {
+                console.error(err);
+                alert('קובץ גיבוי לא תקין או שגיאה בקריאה שלו');
+            } finally {
+                setRestoreInProgress(false);
+                // איפוס השדה כך שאפשר יהיה לבחור את אותו קובץ שוב
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+                setRestoreFileName('');
+            }
+        };
+        reader.readAsText(file, 'utf-8');
+    };
 
     // ----- סטטיסטיקות -----
     const usersCount = users.length;
@@ -632,6 +690,54 @@ const Settings = ({
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+                                {/* Backup & Restore */}
+                <div className="border-b pb-4">
+                    <h3 className="text-lg font-semibold mb-3">גיבוי ושחזור</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                        הורדת גיבוי של כל נתוני המערכת (משתמשים, חניות, הזמנות והגדרות) ושחזור מגיבוי קיים.
+                    </p>
+
+                    <div className="flex flex-col md:flex-row gap-4 items-start">
+                        {/* גיבוי */}
+                        <div>
+                            <button
+                                type="button"
+                                onClick={handleDownloadBackup}
+                                className="bg-blue-500 text-white rounded px-4 py-2 text-sm font-semibold hover:bg-blue-600"
+                            >
+                                הורדת גיבוי מלא
+                            </button>
+                            <p className="text-xs text-gray-500 mt-1 max-w-xs">
+                                קובץ JSON שניתן לשמור במקום בטוח ולהטעין מאוחר יותר בשחזור.
+                            </p>
+                        </div>
+
+                        {/* שחזור */}
+                        <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                                שחזור מגיבוי (קובץ JSON)
+                            </label>
+                            <input
+                                type="file"
+                                accept="application/json"
+                                onChange={handleRestoreFileChange}
+                                className="block text-sm"
+                                disabled={restoreInProgress}
+                                ref={fileInputRef}   // ← זה השינוי!
+                            />
+                            {restoreFileName && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    קובץ נבחר: {restoreFileName}
+                                </p>
+                            )}
+                            {restoreInProgress && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    מבצע שחזור... אנא המתן
+                                </p>
+                            )}
+                        </div>
                     </div>
                 </div>
 
