@@ -2,7 +2,6 @@
 const App = () => {
     const { useState, useEffect } = React;
 
-    // State
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
     const [parkingSpots, setParkingSpots] = useState([]);
@@ -11,159 +10,250 @@ const App = () => {
     const [activeView, setActiveView] = useState('login');
     const [showRegister, setShowRegister] = useState(false);
     const [barrierCode, setBarrierCode] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // Load data on mount
+    const API_BASE = ''; // אותו origin – http://localhost:4000
+
+    // טעינת מצב ראשוני מהשרת + משתמש שמור בדפדפן
     useEffect(() => {
-        const savedUser = Storage.getCurrentUser();
-        const savedUsers = Storage.getUsers();
-        const savedSpots = Storage.getParkingSpots();
-        const savedReservations = Storage.getReservations();
-        const savedMaxDays = Storage.getMaxDays();
-
-        if (savedUser) {
-            setCurrentUser(savedUser);
-            setActiveView('calendar');
+        const savedUserStr = localStorage.getItem('parkingCurrentUser');
+        if (savedUserStr) {
+            try {
+                const u = JSON.parse(savedUserStr);
+                setCurrentUser(u);
+                setActiveView('calendar');
+            } catch (e) {
+                console.error(e);
+            }
         }
-        setUsers(savedUsers);
-        setParkingSpots(savedSpots);
-        setReservations(savedReservations);
-        setMaxDaysPerMonth(savedMaxDays);
+
+        const loadState = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/state`);
+                const data = await res.json();
+                setUsers(data.users || []);
+                setParkingSpots(data.parkingSpots || []);
+                setReservations(data.reservations || []);
+                setMaxDaysPerMonth(data.maxDays ?? 7);
+            } catch (err) {
+                console.error(err);
+                alert('שגיאה בטעינת הנתונים מהשרת');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadState();
     }, []);
 
-    // Save data when changed
-    useEffect(() => {
-        if (users.length > 0) {
-            Storage.saveUsers(users);
-        }
-    }, [users]);
+    // התחברות דרך ה-API
+    const handleLogin = async (formData) => {
+        try {
+            const res = await fetch(`${API_BASE}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json().catch(() => ({}));
 
-    useEffect(() => {
-        Storage.saveReservations(reservations);
-    }, [reservations]);
+            if (!res.ok) {
+                alert(data.message || 'שם משתמש או סיסמה שגויים');
+                return;
+            }
 
-    useEffect(() => {
-        Storage.saveMaxDays(maxDaysPerMonth);
-    }, [maxDaysPerMonth]);
-
-    // Login handler
-    const handleLogin = (formData) => {
-        const user = users.find(u => 
-            u.username === formData.username && 
-            u.password === formData.password
-        );
-        
-        if (user) {
-            setCurrentUser(user);
-            Storage.setCurrentUser(user);
+            setCurrentUser(data);
+            localStorage.setItem('parkingCurrentUser', JSON.stringify(data));
             setActiveView('calendar');
-        } else {
-            alert('שם משתמש או סיסמה שגויים');
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת בעת התחברות');
         }
     };
 
-    // Register handler
-    const handleRegister = (formData) => {
+    // הרשמה
+    const handleRegister = async (formData) => {
         if (!formData.username || !formData.password || !formData.name || !formData.apartment) {
             alert('נא למלא את כל השדות');
             return;
         }
-        
-        if (users.find(u => u.username === formData.username)) {
-            alert('שם משתמש כבר קיים');
-            return;
-        }
 
-        const newUser = {
-            id: users.length + 1,
-            ...formData,
-            isAdmin: false
-        };
-        
-        setUsers([...users, newUser]);
-        alert('נרשמת בהצלחה! כעת תוכל להתחבר');
-        setShowRegister(false);
+        try {
+            const res = await fetch(`${API_BASE}/api/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בהרשמה');
+                return;
+            }
+
+            setUsers([...users, data]);
+            alert('נרשמת בהצלחה! כעת תוכל להתחבר');
+            setShowRegister(false);
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת בעת הרשמה');
+        }
     };
 
-    // Logout handler
+    // התנתקות
     const handleLogout = () => {
         setCurrentUser(null);
-        Storage.setCurrentUser(null);
+        localStorage.removeItem('parkingCurrentUser');
         setActiveView('login');
     };
 
-    // Reservation handler
-    const handleReservation = (spotId, day, month, year) => {
+    // הזמנה / ביטול חניה
+    const handleReservation = async (spotId, day, month, year) => {
         if (!currentUser) return;
 
-        const existing = reservations.find(r => 
-            r.spotId === spotId && 
-            r.day === day && 
-            r.month === month && 
+        const existing = reservations.find(r =>
+            r.spotId === spotId &&
+            r.day === day &&
+            r.month === month &&
             r.year === year
         );
-        
-        if (existing) {
-            if (existing.userId === currentUser.id || currentUser.isAdmin) {
-                setReservations(reservations.filter(r => r.id !== existing.id));
-                alert('ההזמנה בוטלה');
-            } else {
-                alert('החניה תפוסה על ידי ' + existing.userName);
+
+        try {
+            const res = await fetch(`${API_BASE}/api/reservations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.id,
+                    spotId,
+                    day,
+                    month,
+                    year
+                })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                if (data.ownerName) {
+                    alert(`החניה תפוסה על ידי ${data.ownerName}`);
+                } else if (data.message) {
+                    alert(data.message);
+                } else {
+                    alert('שגיאה בשמירת החניה');
+                }
+                return;
             }
-            return;
+
+            // ביטול
+            if (data.cancelled) {
+                if (existing) {
+                    setReservations(reservations.filter(r => r.id !== existing.id));
+                }
+                alert('ההזמנה בוטלה');
+                return;
+            }
+
+            // הזמנה חדשה
+            const newReservation = data;
+            setReservations([...reservations, newReservation]);
+
+            const spot = parkingSpots.find(s => s.id === spotId);
+            alert(
+                `חניה נשמרה בהצלחה!\n\n` +
+                `📍 חניה: ${spot?.number}\n` +
+                `📅 תאריך: ${day}/${month + 1}/${year}\n` +
+                `🔑 קוד גישה: ${newReservation.accessCode}\n\n` +
+                `⚠️ שמור את הקוד הזה!`
+            );
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת בעת שמירת חניה');
         }
-
-        const userReservations = reservations.filter(r => 
-            r.userId === currentUser.id && 
-            r.month === month && 
-            r.year === year
-        ).length;
-
-        if (userReservations >= maxDaysPerMonth && !currentUser.isAdmin) {
-            alert(`הגעת למגבלת ${maxDaysPerMonth} ימים בחודש`);
-            return;
-        }
-
-        const accessCode = Math.floor(1000 + Math.random() * 9000).toString();
-        const newReservation = {
-            id: Date.now(),
-            userId: currentUser.id,
-            userName: currentUser.name,
-            spotId,
-            day,
-            month,
-            year,
-            accessCode
-        };
-
-        setReservations([...reservations, newReservation]);
-        alert(`חניה נשמרה בהצלחה!\n\n📍 חניה: ${parkingSpots.find(s => s.id === spotId)?.number}\n📅 תאריך: ${day}/${month + 1}/${year}\n🔑 קוד גישה: ${accessCode}\n\n⚠️ שמור את הקוד הזה!`);
     };
 
-    // Barrier access handler
-    const handleBarrierAccess = () => {
+    // פתיחת מחסום
+    const handleBarrierAccess = async () => {
         const code = prompt('🔑 הזן קוד גישה (4 ספרות):');
         if (!code) return;
 
         const today = new Date();
-        const reservation = reservations.find(r => 
-            r.accessCode === code &&
-            r.day === today.getDate() &&
-            r.month === today.getMonth() &&
-            r.year === today.getFullYear()
-        );
+        const payload = {
+            code,
+            date: {
+                day: today.getDate(),
+                month: today.getMonth(),
+                year: today.getFullYear()
+            }
+        };
 
-        if (reservation) {
-            const spot = parkingSpots.find(s => s.id === reservation.spotId);
-            alert(`✅ מחסום נפתח!\n\nשלום ${reservation.userName}\nחניה: ${spot?.number}\nכניסה אושרה`);
+        try {
+            const res = await fetch(`${API_BASE}/api/barrier`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                alert(data.message || '❌ קוד שגוי או לא בתוקף להיום');
+                return;
+            }
+
+            alert(
+                `✅ מחסום נפתח!\n\n` +
+                `שלום ${data.userName}\n` +
+                `חניה: ${data.spotNumber}\n` +
+                `כניסה אושרה`
+            );
             setBarrierCode(code);
             setTimeout(() => setBarrierCode(null), 3000);
-        } else {
-            alert('❌ קוד שגוי או לא בתוקף להיום\n\nוודא:\n• הקוד נכון (4 ספרות)\n• ההזמנה היא להיום\n• ההזמנה לא בוטלה');
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת בעת פתיחת מחסום');
         }
     };
 
-    // Render login/register
-    if (activeView === 'login') {
+    // שינוי maxDays דרך השרת
+    const handleMaxDaysChange = async (value) => {
+        const v = parseInt(value);
+        if (!Number.isInteger(v) || v < 1 || v > 31) {
+            alert('ערך לא חוקי');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/api/settings/maxDays`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ maxDays: v })
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בשמירת ההגדרה');
+                return;
+            }
+
+            setMaxDaysPerMonth(data.maxDays);
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת בעת שינוי מגבלה');
+        }
+    };
+
+    // מסך טעינה
+    if (loading) {
+        return (
+            <div className="login-container">
+                <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md text-center">
+                    <h1 className="text-2xl font-bold mb-4">טוען נתונים...</h1>
+                    <p className="text-gray-600">אנא המתן</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Login / Register
+    if (activeView === 'login' || !currentUser) {
         if (showRegister) {
             return (
                 <RegisterForm
@@ -180,7 +270,7 @@ const App = () => {
         );
     }
 
-    // Render main app
+    // Main app
     return (
         <div className="min-h-screen bg-gray-100">
             <Header
@@ -189,7 +279,10 @@ const App = () => {
                 onOpenSettings={() => setActiveView('settings')}
                 onOpenBarrier={handleBarrierAccess}
                 isAdmin={currentUser?.isAdmin}
+                isOnSettings={activeView === 'settings'}
+                onBackToCalendar={() => setActiveView('calendar')}
             />
+
 
             <div className="max-w-6xl mx-auto p-4">
                 {activeView === 'calendar' ? (
@@ -203,13 +296,18 @@ const App = () => {
                 ) : (
                     <Settings
                         maxDaysPerMonth={maxDaysPerMonth}
-                        onMaxDaysChange={setMaxDaysPerMonth}
+                        onMaxDaysChange={handleMaxDaysChange}
                         onBack={() => setActiveView('calendar')}
+                        users={users}
+                        setUsers={setUsers}
+                        reservations={reservations}
+                        parkingSpots={parkingSpots}
+                        setParkingSpots={setParkingSpots}
                     />
+
                 )}
             </div>
 
-            {/* Barrier Notification */}
             {barrierCode && (
                 <div className="barrier-notification bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg text-center animate-bounce">
                     <div className="text-xl font-bold">✅ מחסום נפתח!</div>
@@ -220,5 +318,4 @@ const App = () => {
     );
 };
 
-// Render app
 ReactDOM.render(<App />, document.getElementById('root'));

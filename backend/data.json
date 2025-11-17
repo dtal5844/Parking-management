@@ -1,1 +1,139 @@
-
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "admin123",
+      "isAdmin": true,
+      "name": "מנהל",
+      "apartment": "מנהל"
+    },
+    {
+      "id": 2,
+      "username": "dani",
+      "password": "1234",
+      "isAdmin": false,
+      "name": "דני טל",
+      "apartment": "דירה 5"
+    },
+    {
+      "id": 3,
+      "username": "dtal",
+      "password": "123456",
+      "name": "דןדן",
+      "apartment": "6",
+      "isAdmin": false
+    },
+    {
+      "id": 4,
+      "username": "test",
+      "password": "test",
+      "name": "test",
+      "apartment": "22",
+      "isAdmin": false
+    }
+  ],
+  "reservations": [
+    {
+      "id": 1763412739099,
+      "userId": 2,
+      "userName": "דני טל",
+      "spotId": 7,
+      "day": 5,
+      "month": 10,
+      "year": 2025,
+      "accessCode": "2583"
+    },
+    {
+      "id": 1763412742074,
+      "userId": 2,
+      "userName": "דני טל",
+      "spotId": 8,
+      "day": 8,
+      "month": 10,
+      "year": 2025,
+      "accessCode": "2746"
+    },
+    {
+      "id": 1763412743646,
+      "userId": 2,
+      "userName": "דני טל",
+      "spotId": 10,
+      "day": 11,
+      "month": 10,
+      "year": 2025,
+      "accessCode": "4793"
+    },
+    {
+      "id": 1763412745431,
+      "userId": 2,
+      "userName": "דני טל",
+      "spotId": 9,
+      "day": 13,
+      "month": 10,
+      "year": 2025,
+      "accessCode": "7602"
+    },
+    {
+      "id": 1763412747250,
+      "userId": 2,
+      "userName": "דני טל",
+      "spotId": 7,
+      "day": 12,
+      "month": 10,
+      "year": 2025,
+      "accessCode": "5804"
+    },
+    {
+      "id": 1763412750122,
+      "userId": 2,
+      "userName": "דני טל",
+      "spotId": 7,
+      "day": 14,
+      "month": 10,
+      "year": 2025,
+      "accessCode": "6666"
+    },
+    {
+      "id": 1763412752653,
+      "userId": 2,
+      "userName": "דני טל",
+      "spotId": 10,
+      "day": 4,
+      "month": 10,
+      "year": 2025,
+      "accessCode": "6836"
+    }
+  ],
+  "parkingSpots": [
+    {
+      "id": 6,
+      "number": "26 קומה שניה"
+    },
+    {
+      "id": 7,
+      "number": "21"
+    },
+    {
+      "id": 8,
+      "number": "22"
+    },
+    {
+      "id": 9,
+      "number": "23"
+    },
+    {
+      "id": 10,
+      "number": "24"
+    },
+    {
+      "id": 11,
+      "number": "25"
+    },
+    {
+      "id": 12,
+      "number": "26"
+    }
+  ],
+  "maxDays": 7
+}

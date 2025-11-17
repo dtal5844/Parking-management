@@ -8,11 +8,11 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// ברירת מחדל – כמו Storage.DEFAULT_*
+// ----- נתוני ברירת מחדל -----
 const DEFAULT_DATA = {
   users: [
     { id: 1, username: 'admin', password: 'admin123', isAdmin: true, name: 'מנהל', apartment: 'מנהל' },
-    { id: 2, username: 'dani', password: '1234', isAdmin: false, name: 'דני כהן', apartment: 'דירה 5' }
+    { id: 2, username: 'dani',  password: '1234',      isAdmin: false, name: 'דני כהן', apartment: 'דירה 5' }
   ],
   reservations: [],
   parkingSpots: [
@@ -25,7 +25,7 @@ const DEFAULT_DATA = {
   maxDays: 7
 };
 
-// קריאה/כתיבה ל-data.json
+// ----- קריאה/כתיבה ל-data.json -----
 async function loadData() {
   try {
     const exists = await fs.pathExists(DATA_FILE);
@@ -34,7 +34,7 @@ async function loadData() {
       return { ...DEFAULT_DATA };
     }
     const data = await fs.readJson(DATA_FILE);
-    return { ...DEFAULT_DATA, ...data }; // לוודא שיש כל השדות
+    return { ...DEFAULT_DATA, ...data };
   } catch (err) {
     console.error('Error reading data file, using defaults:', err);
     return { ...DEFAULT_DATA };
@@ -45,33 +45,27 @@ async function saveData(data) {
   await fs.writeJson(DATA_FILE, data, { spaces: 2 });
 }
 
-// Middleware
+// ----- Middleware -----
 app.use(cors());
 app.use(express.json());
 
-// ---------- Routes ---------- //
+// ----- API בסיסי ----- //
 
-// מצב מלא (לטעינה ראשונית באפליקציה)
+// מצב מלא – לטעינה ראשונית
 app.get('/api/state', async (req, res) => {
   const data = await loadData();
-  // לא מחזירים סיסמאות החוצה
-  const safeUsers = data.users.map(u => ({
-    id: u.id,
-    username: u.username,
-    name: u.name,
-    apartment: u.apartment,
-    isAdmin: u.isAdmin
-  }));
+  // כאן אנו מחזירים את המשתמשים כפי שהם (כולל סיסמה) כי ה־frontend עדיין בודק חלק מהדברים
   res.json({
-    users: safeUsers,
+    users: data.users,
     reservations: data.reservations,
     maxDays: data.maxDays,
     parkingSpots: data.parkingSpots
   });
 });
 
-// התחברות (login)
+// התחברות
 app.post('/api/login', async (req, res) => {
+  console.log('LOGIN REQUEST:', req.body);
   const { username, password } = req.body;
   const data = await loadData();
   const user = data.users.find(u => u.username === username && u.password === password);
@@ -82,7 +76,7 @@ app.post('/api/login', async (req, res) => {
   res.json(safeUser);
 });
 
-// הוספת משתמש חדש (register)
+// הרשמה
 app.post('/api/users', async (req, res) => {
   const { username, password, name, apartment } = req.body;
   if (!username || !password || !name || !apartment) {
@@ -125,18 +119,16 @@ app.post('/api/reservations', async (req, res) => {
     r.year === year
   );
 
-  // אם כבר יש הזמנה – ביטול או חסימה
   if (existing) {
     if (existing.userId === userId || user.isAdmin) {
       data.reservations = data.reservations.filter(r => r.id !== existing.id);
       await saveData(data);
-      return res.json({ cancelled: true });
+      return res.json({ cancelled: true, cancelledId: existing.id });
     } else {
       return res.status(409).json({ message: 'החניה תפוסה על ידי משתמש אחר', ownerName: existing.userName });
     }
   }
 
-  // בדיקת מגבלת ימים
   const count = data.reservations.filter(r =>
     r.userId === userId &&
     r.month === month &&
@@ -164,9 +156,9 @@ app.post('/api/reservations', async (req, res) => {
   res.status(201).json(newReservation);
 });
 
-// פתיחת מחסום לפי קוד
+// פתיחת מחסום
 app.post('/api/barrier', async (req, res) => {
-  const { code, date } = req.body; // date = {day, month, year}
+  const { code, date } = req.body; // {day, month, year}
   const data = await loadData();
   const reservation = data.reservations.find(r =>
     r.accessCode === code &&
@@ -185,7 +177,7 @@ app.post('/api/barrier', async (req, res) => {
   });
 });
 
-// שינוי maxDays
+// שינוי מגבלת ימים
 app.patch('/api/settings/maxDays', async (req, res) => {
   const { maxDays } = req.body;
   if (!Number.isInteger(maxDays) || maxDays < 1 || maxDays > 31) {
@@ -197,13 +189,153 @@ app.patch('/api/settings/maxDays', async (req, res) => {
   res.json({ maxDays });
 });
 
-// סטטוס
+// ----- ניהול משתמשים לאדמין ----- //
+app.get('/api/admin/users', async (req, res) => {
+  const data = await loadData();
+  const safeUsers = data.users.map(u => ({
+    id: u.id,
+    username: u.username,
+    name: u.name,
+    apartment: u.apartment,
+    isAdmin: u.isAdmin
+  }));
+  res.json(safeUsers);
+});
+
+app.patch('/api/admin/users/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { name, apartment, isAdmin, password } = req.body;
+
+  const data = await loadData();
+  const user = data.users.find(u => u.id === id);
+  if (!user) {
+    return res.status(404).json({ message: 'משתמש לא נמצא' });
+  }
+
+  if (user.id === 1 && isAdmin === false) {
+    return res.status(400).json({ message: 'לא ניתן להסיר הרשאת מנהל מהמשתמש הראשי' });
+  }
+
+  if (typeof name === 'string') user.name = name;
+  if (typeof apartment === 'string') user.apartment = apartment;
+  if (typeof isAdmin === 'boolean') user.isAdmin = isAdmin;
+  if (typeof password === 'string' && password.trim() !== '') user.password = password.trim();
+
+  await saveData(data);
+
+  const { password: _pw, ...safeUser } = user;
+  res.json(safeUser);
+});
+
+app.delete('/api/admin/users/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const data = await loadData();
+  const user = data.users.find(u => u.id === id);
+
+  if (!user) {
+    return res.status(404).json({ message: 'משתמש לא נמצא' });
+  }
+
+  if (user.id === 1) {
+    return res.status(400).json({ message: 'לא ניתן למחוק את המשתמש הראשי (admin)' });
+  }
+
+  data.users = data.users.filter(u => u.id !== id);
+  data.reservations = data.reservations.filter(r => r.userId !== id);
+
+  await saveData(data);
+  res.json({ ok: true });
+});
+
+// ----- ניהול חניות לאדמין ----- //
+
+// קבלת כל החניות
+app.get('/api/admin/spots', async (req, res) => {
+  const data = await loadData();
+  res.json(data.parkingSpots || []);
+});
+
+// יצירת חניה חדשה
+app.post('/api/admin/spots', async (req, res) => {
+  const { number } = req.body;
+  if (!number || typeof number !== 'string') {
+    return res.status(400).json({ message: 'מספר חניה אינו תקין' });
+  }
+
+  const data = await loadData();
+
+  if (data.parkingSpots.find(s => s.number === number)) {
+    return res.status(409).json({ message: 'קיימת כבר חניה עם מספר זה' });
+  }
+
+  const newId = data.parkingSpots.length
+    ? Math.max(...data.parkingSpots.map(s => s.id)) + 1
+    : 1;
+
+  const newSpot = { id: newId, number: number.trim() };
+  data.parkingSpots.push(newSpot);
+  await saveData(data);
+
+  res.status(201).json(newSpot);
+});
+
+// עדכון מספר חניה
+app.patch('/api/admin/spots/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { number } = req.body;
+  if (!number || typeof number !== 'string') {
+    return res.status(400).json({ message: 'מספר חניה אינו תקין' });
+  }
+
+  const data = await loadData();
+  const spot = data.parkingSpots.find(s => s.id === id);
+  if (!spot) {
+    return res.status(404).json({ message: 'חניה לא נמצאה' });
+  }
+
+  if (data.parkingSpots.find(s => s.number === number && s.id !== id)) {
+    return res.status(409).json({ message: 'קיימת כבר חניה עם מספר זה' });
+  }
+
+  spot.number = number.trim();
+  await saveData(data);
+
+  res.json(spot);
+});
+
+// מחיקת חניה
+app.delete('/api/admin/spots/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const data = await loadData();
+  const spot = data.parkingSpots.find(s => s.id === id);
+
+  if (!spot) {
+    return res.status(404).json({ message: 'חניה לא נמצאה' });
+  }
+
+  // מוחקים גם כל ההזמנות של החניה
+  data.parkingSpots = data.parkingSpots.filter(s => s.id !== id);
+  data.reservations = data.reservations.filter(r => r.spotId !== id);
+
+  await saveData(data);
+  res.json({ ok: true });
+});
+
+
+// ----- סטטוס -----
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// הפעלת השרת
-app.listen(PORT, () => {
-  console.log(`Parking backend running on http://localhost:${PORT}`);
+// ----- Static Frontend ----- //
+const publicDir = path.join(__dirname, '..');
+app.use(express.static(publicDir));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
 });
 
+// ----- Start server ----- //
+app.listen(PORT, () => {
+  console.log(`Parking app running on http://localhost:${PORT}`);
+});
