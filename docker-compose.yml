@@ -3,7 +3,8 @@ version: "3.8"
 services:
   parking-app:
     build: .
+    image: dtalvision/parking-app
     container_name: parking-app
     ports:
-      - "3000:3000"
+      - "4000:4000"   # host:container
     restart: unless-stopped
