@@ -6,7 +6,7 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_FILE = process.env.DATA_FILE_PATH || path.join(__dirname, 'data.json');
 
 // ----- נתוני ברירת מחדל -----
 const DEFAULT_DATA = {

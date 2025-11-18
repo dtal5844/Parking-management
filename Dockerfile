@@ -1,29 +1,17 @@
-# שלב 1: בניית ה-Backend
-FROM node:22-alpine AS backend-build
-WORKDIR /app/backend
-
-# נתקין את כל התלויות של ה-backend
-COPY backend/package*.json ./
-RUN npm install
-
-# נעתיק את קבצי השרת
-COPY backend/ ./
-
-# שלב 2: הרצת האפליקציה (Frontend + Backend)
 FROM node:22-alpine
+
 WORKDIR /app
 
-# נעתיק את frontend כפי שהוא
-COPY index.html ./
-COPY css ./css
-COPY js ./js
-COPY readme.md ./readme.md
+# התקנת תלויות של ה-backend
+COPY backend/package*.json ./backend/
+RUN cd backend && npm install --omit=dev
 
-# נעתיק את ה-backend שנבנה בשלב הראשון
-COPY --from=backend-build /app/backend ./backend
+# העתקת שאר הקבצים (frontend + backend)
+COPY . .
 
-# נפתח יציאה
-EXPOSE 3000
+ENV NODE_ENV=production
+ENV PORT=4000
 
-# הפעלת השרת
+EXPOSE 4000
+
 CMD ["node", "backend/server.js"]
