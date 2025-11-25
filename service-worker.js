@@ -1,5 +1,5 @@
 // Service Worker for Parking Management App
-const CACHE_NAME = 'parking-app-v1';
+const CACHE_NAME = 'parking-app-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -48,6 +48,12 @@ self.addEventListener('activate', (event) => {
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
+  // Only handle http/https requests (skip chrome-extension:// etc.)
+  if (!request.url.startsWith('http')) {
+    return;
+  }
+
   const url = new URL(request.url);
 
   // Network-first strategy for API calls
