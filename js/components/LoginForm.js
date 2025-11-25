@@ -78,12 +78,6 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
                             הרשמה
                         </button>
                     </form>
-                    
-                    <div className="mt-6 text-center text-sm text-gray-600">
-                        <p className="font-medium">למבחן:</p>
-                        <p>מנהל: admin / admin123</p>
-                        <p>דייר: dani / 1234</p>
-                    </div>
                 </div>
             </div>
         </div>
