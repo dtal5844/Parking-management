@@ -27,20 +27,21 @@ const App = () => {
             }
         }
 
-        const loadState = () => {
+        const loadState = async () => {
             try {
-                const users = Storage.getUsers();
-                const parkingSpots = Storage.getParkingSpots();
-                const reservations = Storage.getReservations();
-                const maxDays = Storage.getMaxDays();
+                const res = await fetch(`${API_BASE}/api/state`);
+                if (!res.ok) {
+                    throw new Error('Failed to load state');
+                }
+                const data = await res.json();
 
-                setUsers(users);
-                setParkingSpots(parkingSpots);
-                setReservations(reservations);
-                setMaxDaysPerMonth(maxDays);
+                setUsers(data.users || []);
+                setParkingSpots(data.parkingSpots || []);
+                setReservations(data.reservations || []);
+                setMaxDaysPerMonth(data.maxDays || 7);
             } catch (err) {
                 console.error(err);
-                alert('שגיאה בטעינת הנתונים מהאחסון המקומי');
+                alert('שגיאה בטעינת הנתונים מהשרת');
             } finally {
                 setLoading(false);
             }
@@ -51,23 +52,33 @@ const App = () => {
     }, []);
 
     // התחברות דרך ה-API
-    const handleLogin = (formData) => {
-            const users = Storage.getUsers();
+    const handleLogin = async (formData) => {
+        try {
+            const res = await fetch(`${API_BASE}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: formData.username,
+                    password: formData.password
+                })
+            });
 
-            const user = users.find(u =>
-                u.username === formData.username &&
-                u.password === formData.password
-            );
+            const data = await res.json().catch(() => ({}));
 
-            if (!user) {
-                alert("שם משתמש או סיסמה שגויים");
+            if (!res.ok) {
+                alert(data.message || 'שם משתמש או סיסמה שגויים');
                 return;
             }
 
-            Storage.setCurrentUser(user);
-            setCurrentUser(user);
+            // שמירת משתמש ב-localStorage
+            localStorage.setItem('parkingCurrentUser', JSON.stringify(data));
+            setCurrentUser(data);
             setActiveView('calendar');
-        };
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת בעת התחברות');
+        }
+    };
 
 
     // הרשמה
