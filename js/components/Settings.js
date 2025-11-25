@@ -23,6 +23,8 @@ const Settings = ({
     const [restoreInProgress, setRestoreInProgress] = React.useState(false);
     const fileInputRef = React.useRef(null);
 
+    const API_BASE = ''; // אותו origin
+
     const handleMaxDaysChangeInternal = async (e) => {
         const value = e.target.value;
         if (!value) return;
@@ -30,23 +32,27 @@ const Settings = ({
     };
 
     // ----- טעינת משתמשים וחניות -----
-    const reloadUsers = () => {
+    const reloadUsers = async () => {
         try {
-            const users = Storage.getUsers();
-            setUsers(users || []);
+            const res = await fetch(`${API_BASE}/api/state`);
+            if (!res.ok) throw new Error('Failed to load users');
+            const data = await res.json();
+            setUsers(data.users || []);
         } catch (err) {
             console.error(err);
-            alert('שגיאה בטעינת רשימת המשתמשים ');
+            alert('שגיאה בטעינת רשימת המשתמשים מהשרת');
         }
     };
 
-    const reloadSpots = () => {
+    const reloadSpots = async () => {
         try {
-            const spots = Storage.getParkingSpots();
-            setParkingSpots(spots || []);
+            const res = await fetch(`${API_BASE}/api/admin/spots`);
+            if (!res.ok) throw new Error('Failed to load spots');
+            const data = await res.json();
+            setParkingSpots(data || []);
         } catch (err) {
             console.error(err);
-            alert('שגיאה בטעינת רשימת החניות מהאחסון המקומי');
+            alert('שגיאה בטעינת רשימת החניות מהשרת');
         }
     };
 
@@ -65,15 +71,25 @@ const Settings = ({
         try {
             setSaving(true);
 
+            const res = await fetch(`${API_BASE}/api/admin/users/${user.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isAdmin: !user.isAdmin })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בעת עדכון משתמש');
+                return;
+            }
+
             const updatedUsers = users.map(u =>
                 u.id === user.id ? { ...u, isAdmin: !u.isAdmin } : u
             );
-
-            Storage.saveUsers(updatedUsers);
             setUsers(updatedUsers);
         } catch (err) {
             console.error(err);
-            alert('שגיאה בעת עדכון משתמש');
+            alert('שגיאה בקשר לשרת בעת עדכון משתמש');
         } finally {
             setSaving(false);
         }
@@ -83,15 +99,25 @@ const Settings = ({
         try {
             setSaving(true);
 
+            const res = await fetch(`${API_BASE}/api/admin/users/${user.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: value })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בעת עדכון משתמש');
+                return;
+            }
+
             const updatedUsers = users.map(u =>
                 u.id === user.id ? { ...u, [field]: value } : u
             );
-
-            Storage.saveUsers(updatedUsers);
             setUsers(updatedUsers);
         } catch (err) {
             console.error(err);
-            alert('שגיאה בעת עדכון משתמש');
+            alert('שגיאה בקשר לשרת בעת עדכון משתמש');
         } finally {
             setSaving(false);
         }
@@ -103,16 +129,22 @@ const Settings = ({
         try {
             setSaving(true);
 
-            const updatedUsers = users.map(u =>
-                u.id === user.id ? { ...u, password: password.trim() } : u
-            );
+            const res = await fetch(`${API_BASE}/api/admin/users/${user.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: password.trim() })
+            });
 
-            Storage.saveUsers(updatedUsers);
-            setUsers(updatedUsers);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בעת עדכון סיסמה');
+                return;
+            }
+
             alert('הסיסמה עודכנה בהצלחה');
         } catch (err) {
             console.error(err);
-            alert('שגיאה בעת עדכון סיסמה');
+            alert('שגיאה בקשר לשרת בעת עדכון סיסמה');
         } finally {
             setSaving(false);
         }
@@ -129,19 +161,28 @@ const Settings = ({
         try {
             setSaving(true);
 
+            const res = await fetch(`${API_BASE}/api/admin/users/${user.id}`, {
+                method: 'DELETE'
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בעת מחיקת משתמש');
+                return;
+            }
+
             const updatedUsers = users.filter(u => u.id !== user.id);
-            Storage.saveUsers(updatedUsers);
             setUsers(updatedUsers);
             alert('המשתמש נמחק בהצלחה');
         } catch (err) {
             console.error(err);
-            alert('שגיאה בעת מחיקת משתמש');
+            alert('שגיאה בקשר לשרת בעת מחיקת משתמש');
         } finally {
             setSaving(false);
         }
     };
 
-    const handleCreateUser = (e) => {
+    const handleCreateUser = async (e) => {
         e.preventDefault();
         const { username, password, name, apartment } = newUser;
 
@@ -150,34 +191,34 @@ const Settings = ({
             return;
         }
 
-        const usersList = Storage.getUsers();
+        try {
+            setSaving(true);
 
-        if (usersList.find(u => u.username === username)) {
-            alert('שם המשתמש כבר קיים');
-            return;
+            const res = await fetch(`${API_BASE}/api/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, name, apartment })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה ביצירת משתמש');
+                return;
+            }
+
+            await reloadUsers();
+            setNewUser({ username: '', password: '', name: '', apartment: '' });
+            alert('משתמש חדש נוצר בהצלחה');
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת ביצירת משתמש');
+        } finally {
+            setSaving(false);
         }
-
-        const newId = usersList.length ? Math.max(...usersList.map(u => u.id)) + 1 : 1;
-
-        const user = {
-            id: newId,
-            username,
-            password,
-            name,
-            apartment,
-            isAdmin: false
-        };
-
-        const updatedUsers = [...usersList, user];
-        Storage.saveUsers(updatedUsers);
-        setUsers(updatedUsers);
-
-        setNewUser({ username: '', password: '', name: '', apartment: '' });
-        alert('משתמש חדש נוצר בהצלחה');
     };
 
     // ----- ניהול חניות -----
-    const handleCreateSpot = (e) => {
+    const handleCreateSpot = async (e) => {
         e.preventDefault();
 
         if (!newSpotNumber.trim()) {
@@ -185,41 +226,55 @@ const Settings = ({
             return;
         }
 
-        const spots = Storage.getParkingSpots();
+        try {
+            setSaving(true);
 
-        if (spots.find(s => s.number === newSpotNumber.trim())) {
-            alert('חניה כזו כבר קיימת');
-            return;
+            const res = await fetch(`${API_BASE}/api/admin/spots`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: newSpotNumber.trim() })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בהוספת חניה');
+                return;
+            }
+
+            await reloadSpots();
+            setNewSpotNumber('');
+            alert('החניה נוספה בהצלחה');
+        } catch (err) {
+            console.error(err);
+            alert('שגיאה בקשר לשרת בעת הוספת חניה');
+        } finally {
+            setSaving(false);
         }
-
-        const newId = spots.length ? Math.max(...spots.map(s => s.id)) + 1 : 1;
-
-        const newSpot = {
-            id: newId,
-            number: newSpotNumber.trim()
-        };
-
-        const updatedSpots = [...spots, newSpot];
-        Storage.saveParkingSpots(updatedSpots);
-        setParkingSpots(updatedSpots);
-        setNewSpotNumber('');
-
-        alert('החניה נוספה בהצלחה');
     };
 
     const handleUpdateSpotNumber = async (spot, value) => {
         try {
             setSaving(true);
 
+            const res = await fetch(`${API_BASE}/api/admin/spots/${spot.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: value })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בעת עדכון חניה');
+                return;
+            }
+
             const updatedSpots = parkingSpots.map(s =>
                 s.id === spot.id ? { ...s, number: value } : s
             );
-
-            Storage.saveParkingSpots(updatedSpots);
             setParkingSpots(updatedSpots);
         } catch (err) {
             console.error(err);
-            alert('שגיאה בעת עדכון חניה');
+            alert('שגיאה בקשר לשרת בעת עדכון חניה');
         } finally {
             setSaving(false);
         }
@@ -236,13 +291,22 @@ const Settings = ({
         try {
             setSaving(true);
 
+            const res = await fetch(`${API_BASE}/api/admin/spots/${spot.id}`, {
+                method: 'DELETE'
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.message || 'שגיאה בעת מחיקת חניה');
+                return;
+            }
+
             const updatedSpots = parkingSpots.filter(s => s.id !== spot.id);
-            Storage.saveParkingSpots(updatedSpots);
             setParkingSpots(updatedSpots);
             alert('החניה נמחקה בהצלחה');
         } catch (err) {
             console.error(err);
-            alert('שגיאה בעת מחיקת חניה');
+            alert('שגיאה בקשר לשרת בעת מחיקת חניה');
         } finally {
             setSaving(false);
         }
@@ -264,12 +328,15 @@ const Settings = ({
     ];
 
     // ----- גיבוי ושחזור ----- //
-    const handleDownloadBackup = () => {
+    const handleDownloadBackup = async () => {
         try {
-            const data = Storage.exportData();
-            const json = JSON.stringify(data, null, 2);
+            const res = await fetch(`${API_BASE}/api/admin/backup`);
+            if (!res.ok) {
+                alert('שגיאה בהורדת הגיבוי מהשרת');
+                return;
+            }
 
-            const blob = new Blob([json], { type: 'application/json' });
+            const blob = await res.blob();
             const url = URL.createObjectURL(blob);
 
             const a = document.createElement('a');
@@ -293,25 +360,43 @@ const Settings = ({
         setRestoreFileName(file.name);
 
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
             try {
                 const text = evt.target.result;
                 const json = JSON.parse(text);
 
                 if (!confirm('האם אתה בטוח שברצונך לשחזר את הגיבוי? פעולה זו תדרוס את כל הנתונים הקיימים.')) {
+                    setRestoreFileName('');
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
                     return;
                 }
 
                 setRestoreInProgress(true);
 
-                // טעינת הנתונים מהגיבוי ל-localStorage
-                Storage.importData(json);
+                const res = await fetch(`${API_BASE}/api/admin/restore`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(json)
+                });
 
-                // סנכרון מצב התצוגה עם הנתונים החדשים
-                reloadUsers();
-                reloadSpots();
-                const newMax = Storage.getMaxDays();
-                onMaxDaysChange(newMax);
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    alert(data.message || 'שגיאה בשחזור הגיבוי');
+                    return;
+                }
+
+                // טעינה מחדש של הנתונים מהשרת
+                await reloadUsers();
+                await reloadSpots();
+
+                // טעינת מלוא המצב כולל maxDays
+                const stateRes = await fetch(`${API_BASE}/api/state`);
+                if (stateRes.ok) {
+                    const stateData = await stateRes.json();
+                    onMaxDaysChange(stateData.maxDays || 7);
+                }
 
                 alert('השחזור הצליח! הנתונים נטענו מהגיבוי.');
             } catch (err) {
