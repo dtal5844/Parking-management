@@ -1,12 +1,14 @@
 import React from "react";
 import { Car, User, Lock } from "../icons/Icons";
 
-const LoginForm = ({ onLogin, onSwitchToRegister }) => {
+const LoginForm = ({ onLogin, onSwitchToRegister, loading }) => {
   const [formData, setFormData] = React.useState({ username: "", password: "" });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onLogin(formData);
+    if (!loading) {
+      onLogin(formData);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -73,9 +75,10 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
 
         <button
           type="submit"
-          className="btn w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition font-semibold"
+          disabled={loading}
+          className="btn w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          התחבר
+          {loading ? "מתחבר..." : "התחבר"}
         </button>
 
         <button
