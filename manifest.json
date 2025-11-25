@@ -8,13 +8,7 @@
   "background_color": "#667eea",
   "theme_color": "#667eea",
   "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "https://parking-management-l6ih.onrender.com/api/pwa-icon",
-      "sizes": "512x512",
-      "type": "image/svg+xml"
-    }
-  ],
+  "icons": [],
   "categories": ["productivity", "utilities"],
   "dir": "rtl",
   "lang": "he"
