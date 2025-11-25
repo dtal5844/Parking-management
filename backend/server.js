@@ -370,8 +370,14 @@ app.get('/api/health', (req, res) => {
 
 // ----- Static Frontend ----- //
 const publicDir = path.join(__dirname, '..');
+
+// Explicitly serve images directory
+app.use('/images', express.static(path.join(publicDir, 'images')));
+
+// Serve all other static files
 app.use(express.static(publicDir));
 
+// Catch-all route for SPA (must be last)
 app.get('*', (req, res) => {
   res.sendFile(path.join(publicDir, 'index.html'));
 });
