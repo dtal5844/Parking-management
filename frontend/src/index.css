@@ -1,0 +1,84 @@
+/* Tailwind directives (נשארים ליתר שימוש פנימי) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Reset בסיסי ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  direction: rtl;
+}
+
+/* ===== Layout כללי של הדף ===== */
+
+/* רקע סגול על כל המסך ומרכוז התוכן */
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* הכלי הראשון בתוך #root – הכרטיס הלבן */
+#root > * {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 32px;
+  max-width: 420px;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ===== עיצובים שהיו לך קודם ===== */
+
+/* אנימציות */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* אינפוטים וכפתורים */
+.form-input {
+  transition: all 0.3s ease;
+}
+
+.form-input:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
