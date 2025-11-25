@@ -1,4 +1,3 @@
-// Settings Component (Admin Only)
 const Settings = ({
     maxDaysPerMonth,
     onMaxDaysChange,
@@ -23,27 +22,20 @@ const Settings = ({
     const [restoreFileName, setRestoreFileName] = React.useState('');
     const fileInputRef = React.useRef(null);
 
-    // =========================
-    // Load Data from LocalStorage
-    // =========================
-    const reloadUsers = () => {
-        const data = Storage.getUsers();
-        setUsers(data);
-    };
-
-    const reloadSpots = () => {
-        const data = Storage.getParkingSpots();
-        setParkingSpots(data);
-    };
+    // ======================
+    // Load data from storage
+    // ======================
+    const reloadUsers = () => setUsers(Storage.getUsers());
+    const reloadSpots = () => setParkingSpots(Storage.getParkingSpots());
 
     React.useEffect(() => {
         reloadUsers();
         reloadSpots();
     }, []);
 
-    // =========================
-    // Settings
-    // =========================
+    // ======================
+    // Max days per month
+    // ======================
     const handleMaxDaysChangeInternal = (e) => {
         const value = parseInt(e.target.value);
         if (!value) return;
@@ -52,19 +44,13 @@ const Settings = ({
         onMaxDaysChange(value);
     };
 
-    // =========================
+    // ======================
     // User Management
-    // =========================
+    // ======================
     const handleToggleAdmin = (user) => {
-        if (user.id === 1 && user.isAdmin) {
-            alert('לא ניתן להסיר הרשאת מנהל מהמשתמש הראשי');
-            return;
-        }
-
         const updatedUsers = users.map(u =>
             u.id === user.id ? { ...u, isAdmin: !u.isAdmin } : u
         );
-
         Storage.saveUsers(updatedUsers);
         setUsers(updatedUsers);
     };
@@ -73,50 +59,50 @@ const Settings = ({
         const updatedUsers = users.map(u =>
             u.id === user.id ? { ...u, [field]: value } : u
         );
-
         Storage.saveUsers(updatedUsers);
         setUsers(updatedUsers);
     };
 
     const handleResetPassword = (user) => {
         const password = prompt(`סיסמה חדשה עבור ${user.username}:`);
-        if (!password || !password.trim()) return;
+        if (!password) return;
 
         const updatedUsers = users.map(u =>
-            u.id === user.id ? { ...u, password: password.trim() } : u
+            u.id === user.id ? { ...u, password } : u
         );
 
         Storage.saveUsers(updatedUsers);
         setUsers(updatedUsers);
-        alert('✅ הסיסמה עודכנה בהצלחה');
+        alert("✅ הסיסמה עודכנה");
     };
 
     const handleDeleteUser = (user) => {
         if (user.id === 1) {
-            alert('לא ניתן למחוק את המשתמש הראשי');
+            alert("לא ניתן למחוק את המשתמש הראשי");
             return;
         }
 
-        if (!confirm(`למחוק את המשתמש "${user.username}" וכל ההזמנות שלו?`)) return;
+        if (!confirm(`למחוק את ${user.username}?`)) return;
 
         const updatedUsers = users.filter(u => u.id !== user.id);
         Storage.saveUsers(updatedUsers);
         setUsers(updatedUsers);
 
-        alert('✅ המשתמש נמחק');
+        alert("✅ המשתמש נמחק");
     };
 
     const handleCreateUser = (e) => {
         e.preventDefault();
+
         const { username, password, name, apartment } = newUser;
 
         if (!username || !password || !name || !apartment) {
-            alert('נא למלא את כל השדות');
+            alert("נא למלא את כל השדות");
             return;
         }
 
-        if (users.some(u => u.username === username)) {
-            alert('שם המשתמש כבר קיים');
+        if (users.find(u => u.username === username)) {
+            alert("שם משתמש כבר קיים");
             return;
         }
 
@@ -137,77 +123,75 @@ const Settings = ({
 
         setNewUser({ username: '', password: '', name: '', apartment: '' });
 
-        alert('✅ משתמש נוצר בהצלחה');
+        alert("✅ משתמש נוצר בהצלחה");
     };
 
-    // =========================
-    // Parking Spots Management
-    // =========================
+    // ======================
+    // Parking Spots
+    // ======================
     const handleCreateSpot = (e) => {
         e.preventDefault();
 
+        const spots = Storage.getParkingSpots();
+
         if (!newSpotNumber.trim()) {
-            alert('נא להזין מספר חניה');
+            alert("נא להזין מספר חניה");
             return;
         }
 
-        if (parkingSpots.some(s => s.number === newSpotNumber)) {
-            alert('חניה כזו כבר קיימת');
+        if (spots.find(s => s.number === newSpotNumber.trim())) {
+            alert("חניה כזו כבר קיימת");
             return;
         }
 
-        const newId = parkingSpots.length === 0 ? 1 : Math.max(...parkingSpots.map(s => s.id)) + 1;
+        const newId = spots.length === 0 ? 1 : Math.max(...spots.map(s => s.id)) + 1;
 
         const newSpot = {
             id: newId,
             number: newSpotNumber.trim()
         };
 
-        const updatedSpots = [...parkingSpots, newSpot];
-        Storage.saveParkingSpots(updatedSpots);
-        setParkingSpots(updatedSpots);
+        const updated = [...spots, newSpot];
 
-        setNewSpotNumber('');
-        alert('✅ חניה נוספה בהצלחה');
+        Storage.saveParkingSpots(updated);
+        setParkingSpots(updated);
+        setNewSpotNumber("");
+
+        alert("✅ חניה נוספה");
     };
 
     const handleUpdateSpotNumber = (spot, value) => {
-        const updatedSpots = parkingSpots.map(s =>
+        const updated = parkingSpots.map(s =>
             s.id === spot.id ? { ...s, number: value } : s
         );
 
-        Storage.saveParkingSpots(updatedSpots);
-        setParkingSpots(updatedSpots);
+        Storage.saveParkingSpots(updated);
+        setParkingSpots(updated);
     };
 
     const handleDeleteSpot = (spot) => {
-        const count = reservations.filter(r => r.spotId === spot.id).length;
+        if (!confirm(`למחוק את החניה ${spot.number}?`)) return;
 
-        const confirmMsg = count > 0
-            ? `לחניה יש ${count} הזמנות. למחוק בכל זאת?`
-            : `למחוק את החניה ${spot.number}?`;
+        const updated = parkingSpots.filter(s => s.id !== spot.id);
+        Storage.saveParkingSpots(updated);
+        setParkingSpots(updated);
 
-        if (!confirm(confirmMsg)) return;
-
-        const updatedSpots = parkingSpots.filter(s => s.id !== spot.id);
-        Storage.saveParkingSpots(updatedSpots);
-        setParkingSpots(updatedSpots);
-
-        alert('✅ חניה נמחקה');
+        alert("✅ חניה נמחקה");
     };
 
-    // =========================
+    // ======================
     // Backup
-    // =========================
+    // ======================
     const handleDownloadBackup = () => {
         const data = Storage.exportData();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
 
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = "parking-full-backup.json";
+        a.download = "parking-backup.json";
         a.click();
+
         URL.revokeObjectURL(url);
     };
 
@@ -220,21 +204,21 @@ const Settings = ({
         const reader = new FileReader();
         reader.onload = (evt) => {
             try {
-                const json = JSON.parse(evt.target.result);
+                const data = JSON.parse(evt.target.result);
 
-                if (!confirm("⚠ שחזור ידרוס את כל הנתונים. להמשיך?")) return;
+                if (!confirm("⚠ השחזור ידרוס את כל הנתונים. להמשיך?")) return;
 
-                Storage.importData(json);
+                Storage.importData(data);
 
                 reloadUsers();
                 reloadSpots();
 
-                alert("✅ השחזור בוצע בהצלחה");
+                alert("✅ השחזור הצליח");
             } catch (err) {
                 console.error(err);
                 alert("❌ שגיאה בשחזור הקובץ");
             } finally {
-                fileInputRef.current.value = "";
+                if (fileInputRef.current) fileInputRef.current.value = "";
                 setRestoreFileName("");
             }
         };
@@ -242,40 +226,37 @@ const Settings = ({
         reader.readAsText(file, "utf-8");
     };
 
-    // =========================
-    // Render
-    // =========================
     return (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white p-6 rounded shadow">
 
-            <h2 className="text-xl font-bold mb-4">⚙ הגדרות מערכת</h2>
+            <h2 className="text-xl font-bold mb-4">הגדרות מנהל</h2>
 
-            <div className="mb-6">
-                <label className="block mb-1 font-semibold">מקסימום ימים לחודש:</label>
-                <input
-                    type="number"
-                    value={maxDaysPerMonth}
+            <div className="mb-4">
+                <label>מקסימום ימים לחודש:</label>
+                <input type="number" value={maxDaysPerMonth}
                     onChange={handleMaxDaysChangeInternal}
-                    className="border px-3 py-1 rounded w-32"
+                    className="border p-1 ml-2 w-20"
                 />
             </div>
 
             <div className="mb-6">
                 <button onClick={handleDownloadBackup} className="bg-blue-600 text-white px-4 py-2 rounded">
-                    📥 הורדת גיבוי מלא
+                    הורדת גיבוי מלא
                 </button>
             </div>
 
             <div className="mb-6">
-                <input
-                    type="file"
+                <input type="file"
                     accept="application/json"
                     onChange={handleRestoreFileChange}
                     ref={fileInputRef}
                 />
-                {restoreFileName && <p>נבחר: {restoreFileName}</p>}
+                {restoreFileName && <div>נבחר קובץ: {restoreFileName}</div>}
             </div>
 
+            <button onClick={onBack} className="bg-gray-600 text-white px-4 py-2 rounded">
+                חזרה ליומן
+            </button>
         </div>
     );
 };
