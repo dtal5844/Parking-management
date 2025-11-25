@@ -10,7 +10,7 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/api/pwa-icon",
       "sizes": "512x512",
       "type": "image/svg+xml"
     }
