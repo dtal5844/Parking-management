@@ -1,5 +1,5 @@
 // Service Worker for Parking Management App
-const CACHE_NAME = 'parking-app-v2';
+const CACHE_NAME = 'parking-app-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
