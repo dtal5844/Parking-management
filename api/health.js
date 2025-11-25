@@ -1,4 +1,0 @@
-// api/health.js - Health check endpoint
-export default function handler(req, res) {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-}
