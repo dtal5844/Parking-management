@@ -10,7 +10,7 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/api/pwa-icon",
+      "src": "https://parking-management-l6ih.onrender.com/api/pwa-icon",
       "sizes": "512x512",
       "type": "image/svg+xml"
     }
