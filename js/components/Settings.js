@@ -160,66 +160,73 @@ const Settings = ({
         }
     };
 
-    const handleCreateUser = async (e) => {
+    const handleCreateUser = (e) => {
         e.preventDefault();
         const { username, password, name, apartment } = newUser;
+
         if (!username || !password || !name || !apartment) {
             alert('נא למלא את כל השדות');
             return;
         }
 
-        try {
-            setSaving(true);
-            const res = await fetch(`/api/users`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newUser)
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                alert(data.message || 'שגיאה ביצירת המשתמש');
-                return;
-            }
-            setUsers([...users, data]);
-            setNewUser({ username: '', password: '', name: '', apartment: '' });
-            alert('משתמש חדש נוצר בהצלחה');
-        } catch (err) {
-            console.error(err);
-            alert('שגיאה בקשר לשרת בעת יצירת משתמש');
-        } finally {
-            setSaving(false);
+        const users = Storage.getUsers();
+
+        if (users.find(u => u.username === username)) {
+            alert('שם המשתמש כבר קיים');
+            return;
         }
+
+        const newId = Math.max(...users.map(u => u.id)) + 1;
+
+        const user = {
+            id: newId,
+            username,
+            password,
+            name,
+            apartment,
+            isAdmin: false
+        };
+
+        const updatedUsers = [...users, user];
+        Storage.saveUsers(updatedUsers);
+        setUsers(updatedUsers);
+
+        setNewUser({ username: '', password: '', name: '', apartment: '' });
+        alert('משתמש חדש נוצר בהצלחה');
     };
 
+
     // ----- ניהול חניות -----
-    const handleCreateSpot = async (e) => {
+    const handleCreateSpot = (e) => {
         e.preventDefault();
+
         if (!newSpotNumber.trim()) {
             alert('נא להזין מספר חניה');
             return;
         }
 
-        try {
-            setSaving(true);
-            const res = await fetch(`/api/admin/spots`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ number: newSpotNumber.trim() })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                alert(data.message || 'שגיאה ביצירת החניה');
-                return;
-            }
-            setParkingSpots([...(parkingSpots || []), data]);
-            setNewSpotNumber('');
-        } catch (err) {
-            console.error(err);
-            alert('שגיאה בקשר לשרת בעת יצירת חניה');
-        } finally {
-            setSaving(false);
+        const spots = Storage.getParkingSpots();
+
+        if (spots.find(s => s.number === newSpotNumber.trim())) {
+            alert('חניה כזו כבר קיימת');
+            return;
         }
+
+        const newId = Math.max(...spots.map(s => s.id)) + 1;
+
+        const newSpot = {
+            id: newId,
+            number: newSpotNumber.trim()
+        };
+
+        const updatedSpots = [...spots, newSpot];
+        Storage.saveParkingSpots(updatedSpots);
+        setParkingSpots(updatedSpots);
+        setNewSpotNumber('');
+
+        alert('החניה נוספה בהצלחה');
     };
+
 
     const handleUpdateSpotNumber = async (spot, value) => {
         try {
