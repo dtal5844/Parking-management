@@ -1,115 +1,84 @@
-// Storage Module - Manages all localStorage operations
 const Storage = {
-    // Keys
-    KEYS: {
-        CURRENT_USER: 'parkingCurrentUser',
-        USERS: 'parkingUsers',
-        RESERVATIONS: 'parkingReservations',
-        MAX_DAYS: 'parkingMaxDays',
-        PARKING_SPOTS: 'parkingSpots'
-    },
 
-    // Default data
-    DEFAULT_USERS: [
-        { id: 1, username: 'admin', password: 'admin123', isAdmin: true, name: 'מנהל', apartment: 'מנהל' },
-        { id: 2, username: 'dani', password: '1234', isAdmin: false, name: 'דני כהן', apartment: 'דירה 5' }
-    ],
-
-    DEFAULT_PARKING_SPOTS: [
-        { id: 1, number: 'P1' },
-        { id: 2, number: 'P2' },
-        { id: 3, number: 'P3' },
-        { id: 4, number: 'P4' },
-        { id: 5, number: 'P5' }
-    ],
-
-    DEFAULT_MAX_DAYS: 7,
-
-    // Get current user
-    getCurrentUser() {
-        const data = localStorage.getItem(this.KEYS.CURRENT_USER);
-        return data ? JSON.parse(data) : null;
-    },
-
-    // Set current user
-    setCurrentUser(user) {
-        if (user) {
-            localStorage.setItem(this.KEYS.CURRENT_USER, JSON.stringify(user));
-        } else {
-            localStorage.removeItem(this.KEYS.CURRENT_USER);
+    // ---- Users ----
+    getUsers() {
+        try {
+            return JSON.parse(localStorage.getItem("parking_users") || "[]");
+        } catch {
+            return [];
         }
     },
 
-    // Get all users
-    getUsers() {
-        const data = localStorage.getItem(this.KEYS.USERS);
-        return data ? JSON.parse(data) : this.DEFAULT_USERS;
-    },
-
-    // Save users
     saveUsers(users) {
-        localStorage.setItem(this.KEYS.USERS, JSON.stringify(users));
+        localStorage.setItem("parking_users", JSON.stringify(users));
     },
 
-    // Get reservations
-    getReservations() {
-        const data = localStorage.getItem(this.KEYS.RESERVATIONS);
-        return data ? JSON.parse(data) : [];
-    },
-
-    // Save reservations
-    saveReservations(reservations) {
-        localStorage.setItem(this.KEYS.RESERVATIONS, JSON.stringify(reservations));
-    },
-
-    // Get max days per month
-    getMaxDays() {
-        const data = localStorage.getItem(this.KEYS.MAX_DAYS);
-        return data ? parseInt(data) : this.DEFAULT_MAX_DAYS;
-    },
-
-    // Save max days per month
-    saveMaxDays(days) {
-        localStorage.setItem(this.KEYS.MAX_DAYS, days.toString());
-    },
-
-    // Get parking spots
+    // ---- Parking Spots ----
     getParkingSpots() {
-        const data = localStorage.getItem(this.KEYS.PARKING_SPOTS);
-        return data ? JSON.parse(data) : this.DEFAULT_PARKING_SPOTS;
+        try {
+            return JSON.parse(localStorage.getItem("parking_spots") || "[]");
+        } catch {
+            return [];
+        }
     },
 
-    // Save parking spots
     saveParkingSpots(spots) {
-        localStorage.setItem(this.KEYS.PARKING_SPOTS, JSON.stringify(spots));
+        localStorage.setItem("parking_spots", JSON.stringify(spots));
     },
 
-    // Clear all data
-    clearAll() {
-        Object.values(this.KEYS).forEach(key => {
-            localStorage.removeItem(key);
-        });
+    // ---- Reservations ----
+    getReservations() {
+        try {
+            return JSON.parse(localStorage.getItem("parking_reservations") || "[]");
+        } catch {
+            return [];
+        }
     },
 
-    // Export data (for backup)
+    saveReservations(reservations) {
+        localStorage.setItem("parking_reservations", JSON.stringify(reservations));
+    },
+
+    // ---- Settings ----
+    getMaxDays() {
+        return parseInt(localStorage.getItem("max_days") || "7");
+    },
+
+    setMaxDays(value) {
+        localStorage.setItem("max_days", value);
+    },
+
+    // ---- Export Backup ----
     exportData() {
         return {
             users: this.getUsers(),
-            reservations: this.getReservations(),
-            maxDays: this.getMaxDays(),
             parkingSpots: this.getParkingSpots(),
-            exportDate: new Date().toISOString()
+            reservations: this.getReservations(),
+            settings: {
+                maxDaysPerMonth: this.getMaxDays()
+            }
         };
     },
 
-    // Import data (from backup)
+    // ---- Import Backup ----
     importData(data) {
-        if (data.users) this.saveUsers(data.users);
-        if (data.reservations) this.saveReservations(data.reservations);
-        if (data.maxDays) this.saveMaxDays(data.maxDays);
-        if (data.parkingSpots) this.saveParkingSpots(data.parkingSpots);
+        if (!data || typeof data !== "object") {
+            throw new Error("Invalid backup file");
+        }
+
+        const users = Array.isArray(data.users) ? data.users : [];
+        const spots = Array.isArray(data.parkingSpots) ? data.parkingSpots : [];
+        const reservations = Array.isArray(data.reservations) ? data.reservations : [];
+        const maxDays = data.settings?.maxDaysPerMonth || 7;
+
+        localStorage.setItem("parking_users", JSON.stringify(users));
+        localStorage.setItem("parking_spots", JSON.stringify(spots));
+        localStorage.setItem("parking_reservations", JSON.stringify(reservations));
+        localStorage.setItem("max_days", maxDays);
+
+        return true;
     }
 };
 
-// Export for use in other files
+// Expose globally
 window.Storage = Storage;
