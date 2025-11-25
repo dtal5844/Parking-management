@@ -31,27 +31,27 @@ const Settings = ({
     };
 
     // ----- טעינת משתמשים וחניות -----
-    const reloadUsers = async () => {
+    const reloadUsers = () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/users`);
-            const data = await res.json();
-            setUsers(data || []);
+            const users = Storage.getUsers();
+            setUsers(users || []);
         } catch (err) {
             console.error(err);
-            alert('שגיאה בטעינת רשימת המשתמשים');
+            alert('שגיאה בטעינת רשימת המשתמשים ');
         }
     };
 
-    const reloadSpots = async () => {
+
+    const reloadSpots = () => {
         try {
-            const res = await fetch(`${API_BASE}/api/admin/spots`);
-            const data = await res.json();
-            setParkingSpots(data || []);
+            const spots = Storage.getParkingSpots();
+            setParkingSpots(spots || []);
         } catch (err) {
             console.error(err);
-            alert('שגיאה בטעינת רשימת החניות');
+            alert('שגיאה בטעינת רשימת החניות מהאחסון המקומי');
         }
     };
+
 
     React.useEffect(() => {
         reloadUsers();
