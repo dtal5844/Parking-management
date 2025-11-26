@@ -1,5 +1,5 @@
 // Service Worker for Parking Management App
-const CACHE_NAME = 'parking-app-v10';
+const CACHE_NAME = 'parking-app-v12';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -12,10 +12,7 @@ const ASSETS_TO_CACHE = [
   '/js/components/Header.js',
   '/js/components/Calendar.js',
   '/js/components/Settings.js',
-  '/manifest.json',
-  '/images/icon.svg',
-  '/images/icon-192.png',
-  '/images/icon-512.png'
+  // Note: manifest.json and icons are NOT cached to allow updates
 ];
 
 // Install event - cache assets
@@ -58,6 +55,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(request.url);
+
+  // Network-only strategy for manifest and icons (never cache)
+  if (url.pathname === '/manifest.json' || url.pathname.startsWith('/images/icon')) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Network-first strategy for API calls
   if (url.pathname.startsWith('/api/')) {

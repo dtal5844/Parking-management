@@ -381,6 +381,14 @@ app.get('/api/pwa-icon', (req, res) => {
 // ----- Static Frontend ----- //
 const publicDir = path.join(__dirname, '..');
 
+// Serve manifest.json with no-cache headers to prevent caching issues
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(publicDir, 'manifest.json'));
+});
+
 // Explicitly serve images directory
 app.use('/images', express.static(path.join(publicDir, 'images')));
 
