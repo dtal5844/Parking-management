@@ -1,5 +1,5 @@
 // Service Worker for Parking Management App
-const CACHE_NAME = 'parking-app-v9';
+const CACHE_NAME = 'parking-app-v10';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -12,7 +12,10 @@ const ASSETS_TO_CACHE = [
   '/js/components/Header.js',
   '/js/components/Calendar.js',
   '/js/components/Settings.js',
-  '/manifest.json'
+  '/manifest.json',
+  '/images/icon.svg',
+  '/images/icon-192.png',
+  '/images/icon-512.png'
 ];
 
 // Install event - cache assets
